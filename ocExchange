@@ -1,0 +1,1154 @@
+--**********Load API's**********
+os.loadAPI("ocs/apis/sensor")
+os.loadAPI("ocgui")
+os.loadAPI("ocSQL")
+os.loadAPI("ocFunc")
+
+--*********Global Variables**********
+sensorSide = ocFunc.sensorSide()
+cBlockSide = ocFunc.cBlockSide()
+
+if (peripheral.isPresent("right") and (peripheral.getType("right") == "monitor")) then
+   debug = true
+else
+   debug = false
+end
+
+if debug then
+   monitor = peripheral.wrap("right")
+end
+
+radius = 3
+xOffset = 1
+yOffset = -1
+zOffset = 0
+
+curPlayer = ""
+curAcct = ""
+choice = ""
+
+--**********Peripheral Wrapping**********
+sensor = sensor.wrap(sensorSide)
+--cmdBlock = peripheral.wrap(cBlockSide)
+
+--**********Helper Functions**********
+function table_count(tt, item)
+   local count
+   count = 0
+   for i=1,#tt do
+      if item == tt[i].RawName then 
+         count = count + 1
+      end
+   end
+   return count
+end
+
+function newLine(monitor)
+   if debug then
+      mX,_ = monitor.getSize()
+      cX,cY = monitor.getCursorPos()
+      if cX > mX then
+         monitor.setCursorPos(1,1)
+         monitor.clearLine()
+      else
+         monitor.setCursorPos(1,cY+1)
+         monitor.clearLine()
+      end
+   end
+end
+
+
+--**********GUI Creation**********
+
+screenX, screenY = term.getSize()
+
+mainMenu = ocgui.newMenu(screenX - 10, 9, 11, screenY - 8, true, false, false, true, "left")
+mainMenu:setBorderTextColour(colors.yellow)
+mainMenu:setTextColour(colors.yellow)
+mainMenu:setBackgroundColour(colors.blue)
+
+corpMenu = ocgui.newMenu(screenX - 10, 9, 11, screenY - 8, true, false, false, true, "left")
+corpMenu:setBorderTextColour(colors.yellow)
+corpMenu:setTextColour(colors.yellow)
+corpMenu:setBackgroundColour(colors.blue)
+
+--Just a dummy window to act as a placeholder for the menu until the player is logged in.
+mainMenuWindow = ocgui.newWindow(screenX - 10, 9, 11, screenY - 8, true, false, false, true, "left", false)
+mainMenuWindow:setBorderTextColour(colors.yellow)
+mainMenuWindow:setTextColour(colors.yellow)
+mainMenuWindow:setBackgroundColour(colors.blue)
+
+ocOverlay = ocgui.newOverlay(1,1,screenX,3,true,false,true,true)
+ocOverlay:setHeaderTitle("Outlandcraft", "Exchange System")
+ocOverlay:setBorderTextColour(colors.yellow)
+ocOverlay:setTextColour(colors.yellow)
+ocOverlay:setBackgroundColour(colors.blue)
+
+corpOverlay = ocgui.newOverlay(1,1,screenX,3,true,false,true,true)
+corpOverlay:setHeaderTitle("Outlandcraft", "Exchange System")
+corpOverlay:setBorderTextColour(colors.yellow)
+corpOverlay:setTextColour(colors.yellow)
+corpOverlay:setBackgroundColour(colors.blue)
+
+pOverlay = ocgui.newOverlay(1,1,screenX,3,true,false,true,true)
+pOverlay:setHeaderTitle("Outlandcraft", "Exchange System")
+pOverlay:setBorderTextColour(colors.yellow)
+pOverlay:setTextColour(colors.yellow)
+pOverlay:setBackgroundColour(colors.blue)
+
+sOverlay = ocgui.newOverlay(1,1,screenX,3,true,false,true,true)
+sOverlay:setHeaderTitle("Outlandcraft", "Exchange System")
+sOverlay:setBorderTextColour(colors.yellow)
+sOverlay:setTextColour(colors.yellow)
+sOverlay:setBackgroundColour(colors.blue)
+
+seOverlay = ocgui.newOverlay(1,1,screenX,3,true,false,true,true)
+seOverlay:setHeaderTitle("Outlandcraft", "Exchange System")
+seOverlay:setBorderTextColour(colors.yellow)
+seOverlay:setTextColour(colors.yellow)
+seOverlay:setBackgroundColour(colors.blue)
+
+rightSidebarStatic = ocgui.newWindow(screenX - 10, 4, 11, 5, true, false, false, true, "left", false)
+rightSidebarStatic:setBorderTextColour(colors.yellow)
+rightSidebarStatic:setTextColour(colors.yellow)
+rightSidebarStatic:setBackgroundColour(colors.blue)
+rightSidebarStatic:addData("Use mouse,", "or arrows/", "enter to", "navigate.")
+
+rightSidebarBalance = ocgui.newWindow(screenX - 10, (screenY - (screenY * .2)), 11, (screenY * .2), true, true, true, true, "center", false)
+rightSidebarBalance:setBorderTextColour(colors.yellow)
+rightSidebarBalance:setTextColour(colors.yellow)
+rightSidebarBalance:setBackgroundColour(colors.blue)
+
+pMenu = ocgui.newMenu(screenX - 10, 9, 11, screenY - 8, true, false, false, true, "left")
+pMenu:setBorderTextColour(colors.yellow)
+pMenu:setTextColour(colors.yellow)
+pMenu:setBackgroundColour(colors.blue)
+
+sMenu = ocgui.newMenu(screenX - 10, 9, 11, screenY - 8, true, false, false, true, "left")
+sMenu:setBorderTextColour(colors.yellow)
+sMenu:setTextColour(colors.yellow)
+sMenu:setBackgroundColour(colors.blue)
+
+seMenu = ocgui.newMenu(screenX - 10, 9, 11, screenY - 8, true, false, false, true, "left")
+sMenu:setBorderTextColour(colors.yellow)
+sMenu:setTextColour(colors.yellow)
+sMenu:setBackgroundColour(colors.blue)
+
+--mainTextWin - blank window of the same size as other windows
+mainTextWin = ocgui.newWindow(1, 4, screenX - 11, screenY -3, true, true, true, true, "left", false)
+
+logoutItem = ocgui.newMenuItem()
+logoutItem:newName("Log Out")
+logoutItem:newType("quit")
+logoutItem:newColour(colors.orange)
+
+corporateItem = ocgui.newMenuItem()
+corporateItem:newName("Corporate")
+corporateItem:newType("corporate")
+corporateItem:newColour(colors.white)
+
+personalItem = ocgui.newMenuItem()
+personalItem:newName("Personal")
+personalItem:newType("personal")
+personalItem:newColour(colors.white)
+
+getBalItem = ocgui.newMenuItem()
+getBalItem:newName("Balance")
+getBalItem:newType("getBalance")
+getBalItem:newColour(colors.white)
+
+purchaseItem = ocgui.newMenuItem()
+purchaseItem:newName("Purchase")
+purchaseItem:newType("purchase")
+purchaseItem:newColour(colors.white)
+
+sellItem = ocgui.newMenuItem()
+sellItem:newName("Sell")
+sellItem:newType("sell")
+sellItem:newColour(colors.white)
+
+backItem = ocgui.newMenuItem()
+backItem:newName("Back")
+backItem:newType("back")
+backItem:newColour(colors.white)
+
+searchItem = ocgui.newMenuItem()
+searchItem:newName("Search")
+searchItem:newType("search")
+searchItem:newColour(colors.white)
+
+corpMenu:newOverlay(corpOverlay)
+corpMenu:newItem(corporateItem)
+corpMenu:newItem(personalItem)
+corpMenu:newItem(logoutItem)
+
+mainMenu:newOverlay(ocOverlay)
+mainMenu:newItem(logoutItem)
+
+pMenu:newOverlay(pOverlay)
+pMenu:newItem(logoutItem)
+pMenu:newItem(backItem)
+
+seMenu:newOverlay(seOverlay)
+seMenu:newItem(logoutItem)
+seMenu:newItem(backItem)
+
+
+--**********Login Loop**********
+while curPlayer == "" do
+   ocOverlay:draw()
+   rightSidebarStatic:draw()
+   mainTextWin:resetData()
+   mainMenuWindow:draw()
+   
+   mainTextWin:addData("<Press Any Key to Enter>")
+   mainTextWin:draw()
+   mainTextWin:resetData()
+   local temp = true
+   while temp do
+      sleep(.1)
+      event, id = os.pullEventRaw()
+      if event == "key" then
+         temp = false
+      end
+   end
+   
+   if debug then
+      monitor.write("login loop")
+      newLine(monitor)
+   end
+   
+   playerName = ocFunc.playerName(sensorSide)
+   curPlayer = ""
+   
+   if debug then
+      monitor.write("playerName "..playerName)
+      newLine(monitor)
+   end
+   
+  if playerName == 0 then
+      mainTextWin:resetData()
+      mainTextWin:setTextColour(colors.red)
+      mainTextWin:addData("ERROR: No Player Detected")
+      mainTextWin:draw()
+      mainTextWin:setTextColour(colors.white)
+      mainTextWin:resetData()
+      sleep(3)
+   elseif playerName == 1 then
+      mainTextWin:resetData()
+      mainTextWin:setTextColour(colors.red)
+      mainTextWin:addData("ERROR: Too Many Players Present")
+      mainTextWin:draw()
+      mainTextWin:setTextColor(colors.white)
+      mainTExtWin:resetData()
+      sleep(3)
+   else
+      mainTextWin:resetData()
+      mainTextWin:addData("Accessing "..playerName.."'s account.")
+      mainTextWin:draw()
+      mainTextWin:resetData()
+      local exists = ocSQL.existCheck(playerName)
+      if debug then
+         monitor.write("exist check: "..tostring(exists))
+         newLine(monitor)
+      end
+      if exists == false then
+         mainTextWin:resetData()
+         while true do
+            mainTextWin:addData("Account not found - creating one...")
+            mainTextWin:draw()
+            mainTextWin:addData("Desired PW: ")
+            mainTextWin:draw()
+            local password = read("*")
+            mainTextWin:addData("Repeat: ")
+            mainTextWin:draw()
+            local repeatPass = read("*")
+            if ((password == repeatPass) and (password ~= nil) and (ocFunc.stringTrim(password) ~= "")) then
+               mainTextWin:addData("Processing")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               local accountCheck = ocSQL.createAccount(playerName, password)
+               if accountCheck == true then
+                  mainTextWin:setColour(colors.lime)
+                  mainTextWin:addData("Account Created.")
+                  mainTextWin:draw()
+                  mainTextWin:setColour(colors.white)
+                  mainTextWin:resetData()
+                  curPlayer = tostring(playerName)
+                  sleep(1)
+               else
+                  mainTextWin:setColour(colors.red)
+                  mainTextWin:addData("Failed to Create Account","Contact an Admiral")
+                  mainTextWin:draw()
+                  mainTextWin:resetData()
+                  mainTextWin:setColour(colors.white)
+               end
+               mainTextWin:resetData()
+               mainTextWin:setColour(colors.white)
+               mainTextWin:draw()
+            else
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData("ERROR: Incorrect Passwords, Try Again")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(3)
+            end
+            break
+         end
+      else
+         mainTextWin:resetData()
+         mainTextWin:addData("Welcome "..playerName.."!")
+         mainTextWin:draw()
+         while true do
+            mainTextWin:addData("Please enter password: ")
+            mainTextWin:draw()
+            local password = read("*")
+            local passCheck = ocSQL.passCheck(playerName, password)
+            if passCheck == true then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.lime)
+               mainTextWin:addData("Login Successful")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               curPlayer = tostring(playerName)
+               sleep(1)
+               if debug then
+                  monitor.write("curPlayer: "..curPlayer)
+                  newLine(monitor)
+               end
+               break
+            else
+               mainTextWin:resetData()
+               mainTextWin:addData("Invalid Password")
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:draw()
+               mainTextWin:setTextColour(colors.white)
+               mainTextWin:resetData()
+               sleep(1)
+               break
+            end
+         end
+      end
+   end
+end
+
+if debug then
+   monitor.write("login complete")
+   newLine(monitor)
+end
+
+corpExists = ocSQL.corpAccountExists(curPlayer)
+
+if (corpExists == false) then
+   curAcct = curPlayer
+   mainMenu:newItem(getBalItem)
+   mainMenu:newItem(purchaseItem)
+   mainMenu:newItem(sellItem)
+   mainMenu:newItem(searchItem)
+   mainMenu:newItem(logoutItem)
+else
+   corpFlag = string.lower(ocSQL.corpFlag(curPlayer))
+   
+   if corpFlag == "deposit" then
+      curAcct = curPlayer
+      mainMenu:newItem(getBalItem)
+      mainMenu:newItem(purchaseItem)
+      mainMenu:newItem(sellItem)
+      mainMenu:newItem(logoutItem)
+   end
+end
+
+corpAccount = ocSQL.corpName(curPlayer)
+
+while curAcct == "" do
+   corpOverlay:draw()
+   rightSidebarStatic:draw()
+   mainTextWin:resetData()
+   mainTextWin:addData("Multiple Accounts Found!","Choose an account to access.")
+   mainTextWin:draw()
+   mainTextWin:resetData()
+   stype, data = corpMenu:draw()
+   if stype == "corporate" then
+      if ocFunc.isPlayerPresent(curPlayer, sensorSide) == false then
+         mainTextWin:addData("Player "..curPlayer.." no longer here.","Logging out...")
+         mainTextWin:draw()
+         sleep(1)
+         ocFunc.quit()
+         break
+      end
+      curAcct = ("corp"..corpAccount)
+      ocOverlay:setHeaderTitle("Outlandcraft", "Corporate Exchange System")
+      mainMenu:newItem(getBalItem)
+      mainMenu:newItem(purchaseItem)
+      mainMenu:newItem(sellItem)
+   end
+   if stype == "personal" then
+      if ocFunc.isPlayerPresent(curPlayer, sensorSide) == false then
+         mainTextWin:addData("Player "..curPlayer.." no longer here.","Logging out...")
+         mainTextWin:draw()
+         sleep(1)
+         ocFunc.quit()
+         end
+      ocOverlay:setHeaderTitle("Outlandcraft", "Personal Exchange System")
+      curAcct = curPlayer
+      mainMenu:newItem(getBalItem)
+      mainMenu:newItem(purchaseItem)
+      mainMenu:newItem(sellItem)
+      mainMenu:newItem(searchItem)
+   end
+   if stype == "quit" then
+      ocFunc.quit()
+   end
+end	
+
+rightSidebarBalance:addData(ocSQL.balance(curAcct))
+
+while true do
+   while (choice == "") do
+      ocOverlay:draw()
+      rightSidebarStatic:draw()
+      rightSidebarBalance:draw()
+      mainTextWin:resetData()
+      mainTextWin:addData("Welcome to the Con-Am Exchange","","Please select an option from the menu.")
+      mainTextWin:draw()
+      mainTextWin:resetData()
+      
+      stype, itemData = mainMenu:draw()
+      
+      if stype == "getBalance" then
+         if ocFunc.isPlayerPresent(curPlayer, sensorSide) == false then
+            mainTextWin:addData("Player "..curPlayer.." no longer here.","Logging out...")
+            mainTextWin:draw()
+            sleep(1)
+            ocFunc.quit()
+            break
+         end
+         balance = ocSQL.balance(curAcct)
+         mainTextWin:resetData()
+         mainTextWin:addData("Current Bank Balance Is:",balance.." credits","","Press Any Key to Continue")
+         mainTextWin:draw()
+         local temp = true
+         while temp do
+            sleep(.1)
+            event, id = os.pullEventRaw()
+            if event == "key" then
+               temp = false
+            end
+         end
+      end
+      
+      if stype == "purchase" then
+         if ocFunc.isPlayerPresent(curPlayer, sensorSide) == false then
+            mainTextWin:addData("Player "..curPlayer.." no longer here.","Logging out...")
+            mainTextWin:draw()
+            sleep(1)
+            ocFunc.quit()
+            break
+         end
+         choice = "purchase"
+         
+         pMenuItemsList = {}
+         pItemsTable = {}
+         pMenu:resetItems()
+         
+         for k in pairs(pMenuItemsList) do
+            pMenuItemList[k] = nil
+         end
+         
+         for k in pairs(pItemsTable) do
+            pItemsTable[k] = nil
+         end
+         
+         pMenu = ocgui.newMenu(screenX - 10, 9, 11, screenY - 8, true, false, false, true, "left")
+         pMenu:setBorderTextColour(colors.yellow)
+         pMenu:setTextColour(colors.yellow)
+         pMenu:setBackgroundColour(colors.blue)
+         
+         pMenu:newOverlay(pOverlay)
+         pMenu:newItem(logoutItem)
+         pMenu:newItem(backItem)
+         
+         pItemsTable = ocSQL.purchaseItems()
+
+         --create Item Purchase Menu Details
+         for i=1, #pItemsTable do
+            purchase = ocgui.newMenuItem()
+            dNameP = tostring(pItemsTable[i].dspName)
+            --abbreviate anything before the space to just its first two letters
+            if(string.find(dNameP, "%s") and string.len(dNameP) > 8) then
+               dNameP = string.sub(dNameP, 1, 2).."."..string.sub(dNameP, string.find(dNameP, "%s"), -1)
+               dNameP = string.sub(dNameP, 1, 8)
+            end
+            purchase:newName(dNameP)
+            purchase:newType("purchaseItem")
+            purchase:newColour(colors.white)
+            purchase:setData(pItemsTable[i])
+            table.insert(pMenuItemsList, purchase)
+         end
+
+         --Input Item Purchase Details into Menu
+         for i = 1, #pMenuItemsList do
+            pMenu:newItem(pMenuItemsList[i])
+         end         
+      end
+      
+      if stype == "sell" then
+         if ocFunc.isPlayerPresent(curPlayer, sensorSide) == false then
+            mainTextWin:addData("Player "..curPlayer.." no longer here.","Logging out...")
+            mainTextWin:draw()
+            sleep(1)
+            ocFunc.quit()
+            break
+         end
+         choice = "sell"
+         
+         sellItems = {}
+         sItemsTable = {}
+         sItemsList = {}
+         sMenuItemList = {}
+         items = {}
+         sMenu:resetItems()
+         
+         for k in pairs(sItemsList) do
+            sItemsList[k] = nil
+         end
+         
+         for k in pairs(sMenuItemList) do
+            sMenuItemList[k] = nil
+         end
+         
+         for k in pairs (items) do
+            items[k] = nil
+         end
+         
+         for k in pairs(sItemsTable) do
+            sItemsTable[k] = nil
+         end
+         
+         for k in pairs(sellItems) do
+            sellItems[k] = nil
+         end
+         
+         sMenu = ocgui.newMenu(screenX - 10, 9, 11, screenY - 8, true, false, false, true, "left")
+         sMenu:setBorderTextColour(colors.yellow)
+         sMenu:setTextColour(colors.yellow)
+         sMenu:setBackgroundColour(colors.blue)
+         
+         sMenu:newOverlay(sOverlay)
+         sMenu:newItem(logoutItem)
+         sMenu:newItem(backItem)
+         
+         sItemsTable = ocSQL.exchangeItems("buy")
+
+         invPlayer = false
+
+         sellItems = ocFunc.playerInventory(sensorSide, curPlayer)
+
+         if sellItems[1] then
+            invPlayer = true
+         end
+         
+         Size = 0
+         
+         --Find duplicates
+         if invPlayer then
+            for i=1,#sellItems do
+               count = table_count(items, sellItems[i].RawName)
+               if count == 1 then
+                  inv = sellItems[i].RawName
+                  for j=1,#items do
+                     item = items[j].RawName
+                     if item==inv then
+                        local itemSize = tonumber(items[j].Size)
+                        local sellSize = tonumber(sellItems[i].Size)
+                        Size = tonumber(itemSize + sellSize)
+                        items[j].Size = Size
+                     end
+                  end
+               else
+                  items[#items+1]={}
+                  for k,v in pairs(sellItems[i]) do
+                     items[#items][k] = v
+                  end
+               end
+            end
+         end
+
+         --create Item Sell Menu Details
+         if invPlayer then
+            for i=1, #items do
+               sell = ocgui.newMenuItem()
+               item = items[i].RawName
+               for j=1,#sItemsTable do
+                  check = sItemsTable[j].rawName
+                  if item == check then
+                     dNameS = tostring(sItemsTable[j].dspName)
+                     if (string.find(dNameS, "%s") and string.len(dNameS) > 8) then
+                        dNameS = string.sub(dNameS, 1, 2).."."..string.sub(dNameS, string.find(dNameS, "%s"), -1)
+                        dNameS = string.sub(dNameS, 1, 8)
+                     end
+                     sell:newName(dNameS)
+                     sell:newType("sellItem")
+                     sell:newColour(colors.white)
+                     sell:setData(sItemsTable[j])
+                     table.insert(sMenuItemList, sell)   
+                     table.insert(sItemsList, items[i])    
+                     break
+                  end
+               end
+            end
+         end
+         
+         --Input sellMenuItemList into menu
+         if invPlayer ~= 0 then
+            for i=1, #sMenuItemList do
+               sMenu:newItem(sMenuItemList[i])
+            end
+         end
+      end
+      
+      if stype == "quit" then
+         ocFunc.quit()
+         break
+      end
+      
+      if stype == "search" then
+         if ocFunc.isPlayerPresent(curPlayer, sensorSide) == false then
+            mainTextWin:addData("Player "..curPlayer.." no longer here.","Logging out...")
+            mainTextWin:draw()
+            sleep(1)
+            ocFunc.quit()
+            break
+         end
+         choice = "search"
+         
+         seItemsTable = {}
+         seMenuItemsList = {}
+         seMenu:resetItems()
+         
+         for k in pairs(seItemsTable) do
+            seItemsTable[k] = nil
+         end
+         
+         for k in pairs(seMenuItemsList) do
+            seMenuItemsList[k] = nil
+         end
+
+         seMenu = ocgui.newMenu(screenX - 10, 9, 11, screenY - 8, true, false, false, true, "left")
+         seMenu:setBorderTextColour(colors.yellow)
+         seMenu:setTextColour(colors.yellow)
+         seMenu:setBackgroundColour(colors.blue)
+         
+         seMenu:newOverlay(seOverlay)
+         seMenu:newItem(logoutItem)
+         seMenu:newItem(backItem)
+         
+         mainTextWin:resetData()
+         mainTextWin:addData("What are you searching for?","Search For: ")
+         mainTextWin:draw()
+         lookupItem = read()
+         lookupItem = tostring(lookupItem)
+         seItemsTable = ocSQL.searchItem(lookupItem)
+         
+         --create Item search Menu Details
+         for i=1, #seItemsTable do
+            search = ocgui.newMenuItem()
+            dNameP = tostring(seItemsTable[i].dspName)
+            --abbreviate anything before the space to just its first two letters
+            if(string.find(dNameP, "%s") and string.len(dNameP) > 8) then
+               dNameP = string.sub(dNameP, 1, 2).."."..string.sub(dNameP, string.find(dNameP, "%s"), -1)
+               dNameP = string.sub(dNameP, 1, 8)
+            end
+            search:newName(dNameP)
+            search:newType("seItem")
+            search:newColour(colors.white)
+            search:setData(seItemsTable[i])
+            table.insert(seMenuItemsList, search)
+         end
+         
+         --Input Item Purchase Details into Menu
+         for i = 1, #seMenuItemsList do
+            seMenu:newItem(seMenuItemsList[i])
+         end
+      end
+   end
+   
+   while (choice == "purchase") do
+      if debug then
+         monitor.write("Choice == purchase")
+         newLine(monitor)
+      end
+      
+      term.clear()
+      pOverlay:draw()
+      rightSidebarStatic:draw()
+      rightSidebarBalance:draw()
+      mainMenuWindow:draw()
+      mainTextWin:resetData()
+      mainTextWin:addData("Exchange Purchase Interface","Select an item to purchase.")
+      mainTextWin:draw()
+      mainTextWin:resetData()
+      
+      stype, itemData = pMenu:draw()
+      
+	   if stype == "purchaseItem" then
+         pricePer = tonumber(itemData.pricePer)
+         if debug then
+            monitor.write("pricePer: "..pricePer)
+            newLine(monitor)
+         end
+         base = (tonumber(itemData.price)/1000)
+         if debug then
+            monitor.write("base: "..base)
+            newLine(monitor)
+         end
+         euExchange = tonumber(ocSQL.euExchange())
+         if debug then
+            monitor.write("euExchange: "..euExchange)
+            newLine(monitor)
+         end
+         markup = tonumber(ocSQL.itemPriceMarkup())
+         if debug then
+            monitor.write("markup: "..markup)
+            newLine(monitor)
+         end
+         basePrice = base*euExchange*markup
+         if debug then
+            monitor.write("basePrice: "..basePrice)
+            newLine(monitor)
+         end
+         storeInv = tonumber(itemData.storeInv)
+         if debug then
+            monitor.write("storeInv: "..storeInv)
+            newLine(monitor)
+            monitor.write(itemData.storeInvMax)
+            newLine(monitor)
+         end
+         storeInvMid = (tonumber(itemData.storeInvMax)/2)
+         if debug then
+            monitor.write("storeInvMid: "..storeInvMid)
+            newLine(monitor)
+         end
+         
+         if (storeInv == 0) then
+            storeInvMod = storeInvMid
+         else
+            storeInvMod = (storeInvMid/storeInv)
+         end
+         
+         balance = ocSQL.balance(curAcct)
+         
+         if debug then
+            monitor.write("base: "..base)
+            newLine(monitor)
+            monitor.write("euExchange: "..euExchange)
+            newLine(monitor)
+            monitor.write("markup: "..markup)
+            newLine(monitor)
+            monitor.write("basePrice: "..basePrice)
+            newLine(monitor)
+            monitor.write("storeInvMod: "..storeInvMod)
+            newLine(monitor)
+         end
+         
+         price = math.ceil(basePrice * storeInvMod)
+         
+         if (storeInv >=1) then
+            if (price < 1) then
+               price = 1
+            end
+            mainTextWin:addData("Note: All purchases deduct directly","from your bank account.","",tostring(itemData.dspName)..":")
+            mainTextWin:addData("Value Per Unit: "..price.."c for "..pricePer.." items.","Value per Stack ("..tostring(itemData.stackSize).."): "..tostring(math.ceil(price*( tonumber(itemData.stackSize)/pricePer))).."c")
+            mainTextWin:addData("","Amount to Buy: ")
+            mainTextWin:draw()
+            local buyAmt = read()
+            buyAmt = tonumber(ocFunc.roundToNearest(buyAmt, pricePer))
+            if ocFunc.isPlayerPresent(curPlayer, sensorSide) == false then
+               mainTextWin:addData("Player "..curPlayer.." no longer here.","Logging out...")
+               mainTextWin:draw()
+               sleep(1)
+               ocFunc.quit()
+               break
+            end
+            term.setCursorPos(2, 13)
+            if(tonumber(buyAmt) > storeInv) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData("Not enough items in store, only "..storeInv.." can be purchased.")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            elseif(tonumber(buyAmt) == nil) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData(buyAmt.." is not a valid number")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            elseif (tonumber(balance) == nil) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData("Error getting balance. Contact an Admiral")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            elseif(tonumber(buyAmt * price) > tonumber(balance)) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData("Insufficient Funds")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            elseif (tonumber(buyAmt) <= 0) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData("Must input a positive number")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            else -- theck that player has space
+               local numSlotsReq = ocFunc.getSpaceReq(tonumber(buyAmt), tonumber(itemData.stackSize))
+               local hasSpace = ocFunc.hasSlotsRequired(sensorSide, curPlayer, numSlotsReq)
+               if (hasSpace == false) then
+                  mainTextWin:resetData()
+                  mainTextWin:setTextColour(colors.red)
+                  mainTextWin:addData("Not Enough Inventory Space ("..numSlotsReq.." slots)")
+                  mainTextWin:setTextColour(colors.white)
+                  sleep(1)
+               else --player has space and funds
+                  cost = tonumber(buyAmt * price)
+                  ocSQL.withdraw(curAcct, cost)
+                  ocSQL.deposit("corpConAm", cost)
+                  ocFunc.giveItems(curPlayer, cBlockSide, itemData.blockId, itemData.dmg, buyAmt, tonumber(itemData.stackSize))
+                  mainTextWin:resetData()
+                  mainTextWin:setTextColour(colors.lime)
+                  mainTextWin:addData("Purchase Successful!")
+                  mainTextWin:draw()
+                  mainTextWin:setTextColour(colors.lime)
+                  mainTextWin:addData("<Press Any Key To Continue>")
+                  mainTextWin:draw()
+                  mainTextWin:resetData()
+                  mainTextWin:setTextColour(colors.white)
+                  temp = true
+                  while temp do
+                     sleep(.1)
+                     event, id = os.pullEventRaw()
+                     if (event == "key") then
+                        temp = false
+                        choice = ""
+                     end
+                  end
+               end
+            end
+            balance = ocSQL.balance(curAcct)
+         else
+            mainTextWin:resetData()
+            mainTextWin:addData("Not Enough Items in the Store for purchase.","<Press Any Key>")
+            mainTextWin:draw()
+            mainTextWin:resetData()
+            local temp = true
+            while temp do
+               sleep(.1)
+               event, id = os.pullEventRaw()
+               if (event == "key") then
+                  temp = false
+                  choice = ""
+               end
+            end
+         end
+      end
+      
+      if stype == "quit" then
+         ocFunc.quit()
+         break
+      end
+      
+      if stype == "back" then
+         choice = ""
+      end      
+   end
+   
+   while (choice == "sell") do
+      term.clear()
+      ocOverlay:draw()
+      rightSidebarStatic:draw()
+      rightSidebarBalance:draw()
+      mainMenuWindow:draw()
+      mainTextWin:resetData()
+      mainTextWin:addData("Exchange Sales Interface","Select an item to sell.","","Sales are for all of ","item in inventory.")
+      mainTextWin:draw()
+      mainTextWin:resetData()
+      
+      stype, itemData = sMenu:draw()
+      
+     if stype == "sellItem" then
+         blockId = itemData.blockId
+         meta = itemData.dmg
+         pricePer = tonumber(itemData.pricePer)
+         base = (tonumber(itemData.price)/1000)
+         euExchange = tonumber(ocSQL.euExchange())
+         basePrice = (base*euExchange)
+         
+         for i=1, #sItemsList do
+            if sItemsList[i].RawName == itemData.rawName then
+               itemAmt = sItemsList[i].Size
+            end
+         end
+         
+         storeInv = tonumber(itemData.storeInv)
+         storeInvMid = (tonumber(itemData.storeInvMax)/2)
+         storeInvMod = storeInvMid/storeInv
+         price = basePrice*storeInvMod
+         storeInvOpen = (itemData.storeInvMax - storeInv)
+         cost = math.floor(price*itemAmt)
+         conAm = ocSQL.balance(corpConAm)
+         
+         if (price < 1) then
+            price = 1
+         end
+         
+         if (itemAmt > storeInvOpen) then
+            mainTextWin:resetData()
+            mainTextWin:addData("Unable to sell all items.","Maximum items able to be sold is: "..storeInvOpen)
+            mainTextWin:setTextColour(colors.red)
+            mainTextWin:draw()
+            mainTextWin:setTextColour(colors.white)
+            mainTextWin:resetData()
+         elseif (cost > conAm) then
+            mainTextWin:resetData()
+            mainTextWin:addData("Not enough credits in the ConAm account for this transaction.")
+            mainTextWin:setTextColour(colors.red)
+            mainTextWin:draw()
+            mainTextWin:setTextColour(colors.white)
+            mainTextWin:resetData()
+         else
+            mainTextWin:addData("Amount Found: "..itemAmt)
+            mainTextWin:addData("Sell Price: "..cost)
+            mainTextWin:addData("All sales added to account","","\"Q\" to quit, any other key to continue")
+            mainTextWin:draw()
+            mainTextWin:resetData()
+            temp = true
+            quit = false
+            while temp do
+               sleep(.1)
+               event, id = os.pullEventRaw()
+               if event == "key" and id == 16 then
+                  quit = true
+                  temp = false
+               elseif event == "key" and id == 1 then
+                  quit = true
+                  temp = false
+               else
+                  temp = false
+               end
+            end
+            if quit == false then
+               ocFunc.clearSoldItems(curPlayer, cBlockSide, blockId, meta)
+               ocSQL.withdraw("corpConAm", (itemAmt * price))
+               ocSQL.deposit(curAcct, (itemAmt * price))
+               for i=1, #sItemsList do
+                  if sItemsList[i].RawName == itemData.rawName then
+                     sItemsList[i].Size = 0
+                  end
+               end            
+               mainTextWin:setTextColour(colors.lime)
+               mainTextWin:addData("Sale Successful!","","<Press Any Key To Continue>")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               temp = true
+               while temp do
+                  sleep(.1)
+                  event, id = os.pullEventRaw()
+                  if (event == "key") then
+                     temp = false
+                     choice = ""
+                  end
+               end
+            end
+            balance = ocSQL.balance(curAcct)
+         end
+      end
+      
+      if stype == "quit" then
+         ocFunc.quit()
+         break
+      end
+      
+      if stype == "back" then
+         choice = ""
+      end
+      
+   end
+
+   while (choice == "search") do
+      term.clear()
+      seOverlay:draw()
+      rightSidebarStatic:draw()
+      rightSidebarBalance:draw()
+      mainMenuWindow:draw()
+      mainMenuWindow:draw()
+      mainTextWin:resetData()
+      mainTextWin:addData("Exchange Items matching search","Select an item to purchase.")
+      mainTextWin:draw()
+      mainTextWin:resetData()
+      
+      stype, itemData = seMenu:draw()
+      
+      if stype == "seItem" then
+         pricePer = tonumber(itemData.pricePer)
+         base = (tonumber(itemData.price)/1000)
+         euExchange = tonumber(ocSQL.euExchange())
+         markup = tonumber(ocSQL.itemPriceMarkup())
+         basePrice = base*euExchange*markup
+         storeInv = tonumber(itemData.storeInv)
+         storeInvMid = (tonumber(itemData.storeInvMax)/2)
+         if (storeInv == 0) then
+            storeInvMod = storeInvMid
+         else
+            storeInvMod = (storeInvMid/storeInv)
+         end
+         balance = ocSQL.balance(curAcct)
+         
+         if debug then
+            monitor.write("base: "..base)
+            newLine(monitor)
+            monitor.write("euExchange: "..euExchange)
+            newLine(monitor)
+            monitor.write("markup: "..markup)
+            newLine(monitor)
+            monitor.write("basePrice: "..basePrice)
+            newLine(monitor)
+            monitor.write("storeInvMod: "..storeInvMod)
+            newLine(monitor)
+         end
+         
+         price = math.ceil(basePrice * storeInvMod)
+         
+         if (storeInv >=1) then
+            if (price < 1) then
+               price = 1
+            end
+            mainTextWin:addData("Note: All purchases deduct directly","from your bank account.","",tostring(itemData.dspName)..":")
+            mainTextWin:addData("Value Per Unit: "..price.."c for "..pricePer.." items.","Value per Stack ("..tostring(itemData.stackSize).."): "..tostring(math.ceil(price*( tonumber(itemData.stackSize)/pricePer))).."c")
+            mainTextWin:addData("","Amount to Buy: ")
+            mainTextWin:draw()
+            local buyAmt = read()
+            buyAmt = tonumber(ocFunc.roundToNearest(buyAmt, pricePer))
+            if ocFunc.isPlayerPresent(curPlayer, sensorSide) == false then
+               mainTextWin:addData("Player "..curPlayer.." no longer here.","Logging out...")
+               mainTextWin:draw()
+               sleep(1)
+               ocFunc.quit()
+               break
+            end
+            term.setCursorPos(2, 13)
+            if(tonumber(buyAmt) > storeInv) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData("Not enough items in store, only "..storeInv.." can be purchased.")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            elseif(tonumber(buyAmt) == nil) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData(buyAmt.." is not a valid number")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            elseif (tonumber(balance) == nil) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData("Error getting balance. Contact an Admiral")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            elseif(tonumber(buyAmt * price) > tonumber(balance)) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData("Insufficient Funds")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            elseif (tonumber(buyAmt) <= 0) then
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.red)
+               mainTextWin:addData("Must input a positive number")
+               mainTextWin:draw()
+               mainTextWin:resetData()
+               mainTextWin:setTextColour(colors.white)
+               sleep(1)
+            else -- theck that player has space
+               local numSlotsReq = ocFunc.getSpaceReq(tonumber(buyAmt), tonumber(itemData.stackSize))
+               local hasSpace = ocFunc.hasSlotsRequired(sensorSide, curPlayer, numSlotsReq)
+               if (hasSpace == false) then
+                  mainTextWin:resetData()
+                  mainTextWin:setTextColour(colors.red)
+                  mainTextWin:addData("Not Enough Inventory Space ("..numSlotsReq.." slots)")
+                  mainTextWin:setTextColour(colors.white)
+                  sleep(1)
+               else --player has space and funds
+                  cost = tonumber(buyAmt * price)
+                  ocSQL.withdraw(curAcct, cost)
+                  ocSQL.deposit("corpConAm", cost)
+                  ocFunc.giveItems(curPlayer, cBlockSide, itemData.blockId, itemData.dmg, buyAmt, tonumber(itemData.stackSize))
+                  mainTextWin:resetData()
+                  mainTextWin:setTextColour(colors.lime)
+                  mainTextWin:addData("Purchase Successful!")
+                  mainTextWin:draw()
+                  mainTextWin:setTextColour(colors.lime)
+                  mainTextWin:addData("<Press Any Key To Continue>")
+                  mainTextWin:draw()
+                  mainTextWin:resetData()
+                  mainTextWin:setTextColour(colors.white)
+                  temp = true
+                  while temp do
+                     sleep(.1)
+                     event, id = os.pullEventRaw()
+                     if (event == "key") then
+                        temp = false
+                        choice = ""
+                     end
+                  end
+               end
+            end
+            balance = ocSQL.balance(curAcct)
+         else
+            mainTextWin:resetData()
+            mainTextWin:addData("Not Enough Items in the Store for purchase.","<Press Any Key>")
+            mainTextWin:draw()
+            mainTextWin:resetData()
+            local temp = true
+            while temp do
+               sleep(.1)
+               event, id = os.pullEventRaw()
+               if (event == "key") then
+                  temp = false
+               end
+            end
+         end
+      end
+      
+      if stype == "quit" then
+         ocFunc.quit()
+         break
+      end
+      
+      if stype == "back" then
+         choice = ""
+      end
+   end
+end
