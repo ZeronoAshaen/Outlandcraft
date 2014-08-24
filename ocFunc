@@ -1,0 +1,359 @@
+--**********API's to Load*************
+os.loadAPI("ocs/apis/sensor")
+
+--**********Unverisal Variables**********
+
+exchangeRate = 10
+
+ironNuggetID = "7794"
+ironNuggetMeta = "0"
+ironNuggetRaw = "railcraft.nugget.iron.name"
+silverNuggetID = "20267"
+silverNuggetMeta = "98"
+silverNuggetRaw = "thermalexpansion.silver nugget"
+tinNuggetID = "20267"
+tinNuggetMeta = "97"
+tinNuggetRaw = "thermalexpansion.tin nugget"
+copperNuggetID = "20267"
+copperNuggetMeta = "96"
+copperNuggetRaw= "thermalexpansion.copper nugget"
+
+
+--**********Peripheral Functions*******
+function sensorSide()
+   if ((peripheral.isPresent("top")) and (peripheral.getType("top") == "sensor")) then
+      sensorSide = "top"
+   elseif ((peripheral.isPresent("bottom")) and (peripheral.getType("bottom") == "sensor")) then
+      sensorSide = "bottom"
+   elseif ((peripheral.isPresent("left")) and (peripheral.getType("left") == "sensor")) then
+      sensorSide = "left"
+   elseif ((peripheral.isPresent("right")) and (peripheral.getType("right") == "sensor")) then
+      sensorSide = "right"
+   elseif ((peripheral.isPresent("front")) and (peripheral.getType("front") == "sensor")) then
+      sensorSide = "front"
+   elseif ((peripheral.isPresent("back")) and (peripheral.getType("back") == "sensor")) then
+      sensorSide = "back"
+   end
+   return sensorSide
+end
+
+function cBlockSide()
+   if ((peripheral.isPresent("top")) and (peripheral.getType("top") == "command")) then
+      cblock = "top"
+   elseif ((peripheral.isPresent("bottom")) and (peripheral.getType("bottom") == "command")) then
+      cblock = "bottom"
+   elseif ((peripheral.isPresent("left")) and (peripheral.getType("left") == "command")) then
+      cblock = "left"
+   elseif ((peripheral.isPresent("right")) and (peripheral.getType("right") == "command")) then
+      cblock = "right"
+   elseif ((peripheral.isPresent("front")) and (peripheral.getType("front") == "command")) then
+      cblock = "front"
+   elseif ((peripheral.isPresent("back")) and (peripheral.getType("back") == "command")) then
+      cblock = "back"
+   end
+   return cblock
+end
+
+function batSide()
+   if ((peripheral.isPresent("top")) and (peripheral.getType("top") == "batbox" or peripheral.getType("top") == mfsu)) then
+      batSide = "top"
+   elseif ((peripheral.isPresent("bottom")) and (peripheral.getType("bottom") == "batbox" or peripheral.getType("bottom") == mfsu)) then
+      batSide = "bottom"
+   elseif ((peripheral.isPresent("left")) and (peripheral.getType("left") == "batbox" or peripheral.getType("left") == mfsu)) then
+      batSide = "left"
+   elseif ((peripheral.isPresent("right")) and (peripheral.getType("right") == "batbox" or peripheral.getType("right") == mfsu)) then
+      batSide = "right"
+   elseif ((peripheral.isPresent("front")) and (peripheral.getType("front") == "batbox" or peripheral.getType("front") == mfsu)) then
+      batSide = "front"
+   elseif ((peripheral.isPresent("back")) and (peripheral.getType("back") == "batbox" or peripheral.getType("back") == mfsu)) then
+      batSide = "back"
+   end
+   return batSide
+end
+
+function monitorSide()
+   if ((peripheral.isPresent("top")) and (peripheral.getType("top") == "monitor")) then
+      monitorSide = "top"
+   elseif ((peripheral.isPresent("bottom")) and (peripheral.getType("bottom") == "monitor")) then
+      monitorSide = "bottom"
+   elseif ((peripheral.isPresent("left")) and (peripheral.getType("left") == "monitor")) then
+      monitorSide = "left"
+   elseif ((peripheral.isPresent("right")) and (peripheral.getType("right") == "monitor")) then
+      monitorSide = "right"
+   elseif ((peripheral.isPresent("front")) and (peripheral.getType("front") == "monitor")) then
+      monitorSide = "front"
+   elseif ((peripheral.isPresent("back")) and (peripheral.getType("back") == "monitor")) then
+      monitorSide = "back"
+   else
+      monitorSide = false
+   end
+   return monitorSide
+end
+
+
+--**********Sensor Functions**********
+function isPlayerPresent(playerName, sensorSide) --checks if player is present, returns true/false
+   prox = sensor.wrap(sensorSide)
+   radius = 3
+   targets = prox.getTargets()
+   for k, v in pairs(targets) do
+      if distance(v.Position) < radius then
+         if(string.find(k, playerName, 0, true) ~= nil) then
+            return true
+         else
+            return false
+         end
+      elseif distance(v.Position) > radius then
+         return false
+      end
+   end
+end
+
+function playerName(sensorSide) --finds player name, returns "0" for no player, "1" for too many, or the player name if only one.
+   local prox = sensor.wrap(sensorSide)
+   local radius = 3
+   local targets = prox.getTargets()
+   local numTargets = 0
+   local targetNames = {}
+   for k, v in pairs (targets) do
+      if distance(v.Position) < radius then
+         numTargets = numTargets + 1
+         table.insert(targetNames, k)
+      end
+   end
+   if numTargets < 1 then
+      return 0
+   elseif numTargets > 1 then
+      return 1
+   else
+      return targetNames[1]
+   end
+end
+
+function hasSlotsRequired(sensorSide, playerName, numSlots) --sees if inventory of playerName has numSlots open, returns true/false
+   local sensor = sensor.wrap(sensorSide)
+   local openSlots = 0
+   local fulldetails = sensor.getTargetDetails(playerName)
+   inventory = fulldetails.Inventory
+   for i=1, 36 do --scan toolbar, and all inventory (not armor slots)
+      if(inventory[i] == nil or inventory[i] == "") then
+         openSlots = openSlots + 1
+      end
+   end
+   if(openSlots >= numSlots) then
+      return true
+   else
+      return false
+   end
+end
+
+function scanInvCredits(sensorSide, playerName) --scan inventory credits and return table
+   local sensor = sensor.wrap(sensorSide)
+   nuggets = {
+      copper = 0;
+      tin = 0;
+      iron = 0;
+      silver = 0;
+   }
+   local fullDetails = sensor.getTargetDetails(playerName)
+   inventory = fullDetails.Inventory
+   for i=1, 36 do --Scan toolbar, and all inventory (not armor slots)
+      if(inventory[i] ~= nil) then
+         if(string.find(inventory[i].RawName, copperNuggetRaw, 0, true) ~= nil) then
+            nuggets.copper = nuggets.copper + tonumber(inventory[i].Size)
+         end
+         if(string.find(inventory[i].RawName, tinNuggetRaw, 0, true) ~= nil) then
+            nuggets.tin = nuggets.tin + tonumber(inventory[i].Size)
+         end
+         if(string.find(inventory[i].RawName, silverNuggetRaw, 0, true) ~= nil) then
+            nuggets.silver = nuggets.silver + tonumber(inventory[i].Size)
+         end
+         if(string.find(inventory[i].RawName, ironNuggetRaw, 0, true) ~= nil) then
+            nuggets.iron = nuggets.iron + tonumber(inventory[i].Size)
+         end
+      end
+   end
+
+   return nuggets
+end
+
+function playerInventory(sensorSide, playerName)
+   prox = sensor.wrap(sensorSide)
+   fullDetails = prox.getTargetDetails(playerName)
+   inventory = fullDetails.Inventory
+   items = {}
+   for i=1, 36 do
+      if (inventory[i] ~= nil) then
+         table.insert(items, inventory[i])
+      end
+   end
+   return items
+end
+
+function distance(pos) --calculates the distance to player, returns distance
+   local xd = pos.X
+   local yd = pos.Y
+   local zd = pos.Z
+   return math.sqrt(xd*xd + yd*yd + zd*zd)
+end
+
+
+--**********Command Block Functions**********
+function clearSoldItems(playerName, cBlockSide, blockID, itemMeta)
+   cBlock = peripheral.wrap(cBlockSide)
+   cBlock.setCommand("/clear "..tostring(playerName).." "..tostring(blockID).." "..tostring(itemMeta))
+   cBlock.runCommand()
+   cBlock.setCommand(" ")
+end
+
+function clearInvCredits(playerName, cmdBlockSide) --clear credits from inventory of playerName
+   local cmdBlock = peripheral.wrap(cmdBlockSide)
+   cmdBlock.setCommand("/clear "..playerName.." "..copperNuggetID.." "..copperNuggetMeta)
+   cmdBlock.runCommand()
+   cmdBlock.setCommand("/clear "..playerName.." "..tinNuggetID.." "..tinNuggetMeta)
+   cmdBlock.runCommand()
+   cmdBlock.setCommand("/clear "..playerName.." "..ironNuggetID.." "..ironNuggetMeta)
+   cmdBlock.runCommand()
+   cmdBlock.setCommand("/clear "..playerName.." "..silverNuggetID.." "..silverNuggetMeta)
+   cmdBlock.runCommand()
+   cmdBlock.setCommand("")
+end
+
+function giveCredits(playerName, cmdBlockSide, numCopper, numTin, numIron, numSilver) --gives playerName specified credits
+   local cmdBlock = peripheral.wrap(tostring(cmdBlockSide))
+   if(numCopper > 0) then
+      cmdBlock.setCommand("/give "..tostring(playerName).." "..tostring(copperNuggetID).." "..tostring(numCopper).." "..tostring(copperNuggetMeta))
+      cmdBlock.runCommand()
+   end
+   if(numTin > 0) then
+      cmdBlock.setCommand("/give "..tostring(playerName).." "..tostring(tinNuggetID).." "..tostring(numTin).." "..tostring(tinNuggetMeta))
+      cmdBlock.runCommand()
+   end
+   if(numIron > 0) then
+      cmdBlock.setCommand("/give "..tostring(playerName).." "..tostring(ironNuggetID).." "..tostring(numIron).." "..tostring(ironNuggetMeta))
+      cmdBlock.runCommand()
+   end
+   if(numSilver > 0) then
+      if numSilver > 64 then
+         local stacks = math.floor(numSilver/64)
+         numSilver = numSilver - (stacks * 64)
+         while stacks > 0 do
+            cmdBlock.setCommand("/give "..tostring(playerName).." "..tostring(silverNuggetID).." 64 "..tostring(silverNuggetMeta))
+            cmdBlock.runCommand()
+            stacks = (stacks - 1)
+            sleep (.1)
+         end
+         if numSilver > 0 then
+            cmdBlock.setCommand("/give "..tostring(playerName).." "..tostring(silverNuggetID).." "..tostring(numSilver).." "..tostring(silverNuggetMeta))
+            cmdBlock.runCommand()
+         end
+      else	
+         cmdBlock.setCommand("/give "..tostring(playerName).." "..tostring(silverNuggetID).." "..tostring(numSilver).." "..tostring(silverNuggetMeta))
+         cmdBlock.runCommand()
+      end
+   end
+   cmdBlock.setCommand("")
+end
+
+function giveItems(playerName, cBlockSide, blockID, dmg, amt, stackSize)
+   cBlock = peripheral.wrap(cBlockSide)
+   if(amt > 0) then
+      if (tonumber(amt) > tonumber(stackSize)) then
+         local stacks = math.floor(amt/stackSize)
+         amt = (tonumber(amt) - (stacks * tonumber(stackSize)))
+         while stacks > 0 do
+            cBlock.setCommand("/give "..playerName.." "..blockID.." "..stackSize.." "..dmg)
+            cBlock.runCommand()
+            cBlock.setCommand(" ")
+            stacks = stacks - 1
+         end
+         if (amt > 0) then
+            cBlock.setcommand("/give "..playerName.." "..blockID.." "..amt.." "..dmg)
+            cBlock.runCommand()
+            cBlock.setCommand(" ")
+         end
+      else
+         cBlock.setCommand("/give "..playerName.." "..blockID.." "..amt.." "..dmg)
+         cBlock.runCommand()
+         cBlock.setCommand(" ")
+      end
+   end
+   cBlock.setCommand("")
+end
+
+
+--**********Misc Functions**********
+function stringTrim(str) --trims string
+   return (string.gsub(str, "^%s*(.-)%s*$", "%1"))
+end
+
+function getSpaceReq(itemQty,itemStackSize)
+   numSlots = 0
+   numSlots = numSlots + math.ceil(itemQty/itemStackSize)
+   return numSlots
+end
+
+function getSlotsRequired(numCopper, numTin, numIron, numSilver) --returns how much space would be required for a given amount of credits
+   numSlots = 0
+   numSlots = numSlots + math.ceil(numCopper/64)
+   numSlots = numSlots + math.ceil(numTin/64)
+   numSlots = numSlots + math.ceil(numIron/64)
+   numSlots = numSlots + math.ceil(numSilver/64)
+   return numSlots
+end
+
+function creditAmount(amount) --split credits into denominations, returns table of denominations
+   nuggets = {
+      copper = 0;
+      tin = 0;
+      iron = 0;
+      silver = 0;
+   }
+   copperVal = 1
+   tinVal = copperVal * exchangeRate
+   ironVal = copperVal * exchangeRate * exchangeRate
+   silverVal = copperVal * exchangeRate * exchangeRate * exchangeRate
+   remaining = amount
+   
+   while remaining >= silverVal do
+      nuggets.silver = nuggets.silver + 1
+      remaining = remaining - silverVal
+   end
+   while remaining >= ironVal do		
+      nuggets.iron = nuggets.iron + 1
+      remaining = remaining - ironVal
+   end
+   while remaining >= tinVal do	
+      nuggets.tin = nuggets.tin +1
+      remaining = remaining - tinVal
+   end
+   while remaining >= copperVal do
+      nuggets.copper = nuggets.copper + 1
+      remaining = remaining - copperVal
+   end
+   
+   return nuggets
+end
+   
+function denomToCredits(numCopper, numTin, numIron, numSilver) --converts the given number of 
+   creditVal = 0
+   creditVal = creditVal + numCopper + (exchangeRate * numTin) + (exchangeRate * exchangeRate * numIron) + (exchangeRate*exchangeRate*exchangeRate*numSilver)
+   
+   return creditVal
+end
+
+function quit()
+   term.setBackgroundColor(colors.black)
+   term.setTextColor(colors.white)
+   term.clear()
+   term.setCursorPos(1,1)
+   os.shutdown()
+end
+
+function roundToNearest(number, multiple)
+   local d1 = number/multiple
+   local d2 = math.floor(d1)
+   return d2 * multiple
+end
+
+
